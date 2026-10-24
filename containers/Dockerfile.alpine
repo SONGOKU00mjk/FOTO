@@ -1,0 +1,9 @@
+FROM alpine:3
+RUN apk add --no-cache \
+      build-base pkgconf libxkbcommon-dev wayland-dev \
+      git curl sudo rust cargo \
+ && adduser -D -s /bin/sh builder \
+ && echo 'builder ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/builder
+USER builder
+WORKDIR /home/builder
+CMD ["sh", "-c", "sh /repo/install.sh --user --no-rustup && test -x $HOME/.local/bin/foto && $HOME/.local/bin/foto --help >/dev/null && echo 'SMOKE OK: alpine'"]
