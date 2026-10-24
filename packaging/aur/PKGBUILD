@@ -1,0 +1,30 @@
+# Maintainer: SONGOKU00mjk <SONGOKU00mjk@users.noreply.github.com>
+# AUR package for the released version. The -git variant lives next door:
+# packaging/aur/foto-git/PKGBUILD.
+pkgname=foto
+pkgver=1.0.1
+pkgrel=1
+pkgdesc="Minimal Wayland-native app launcher and image browser — no GTK, no Qt"
+arch=('x86_64' 'aarch64')
+url="https://github.com/SONGOKU00mjk/foto"
+license=('GPL3')
+depends=('gcc-libs' 'libxkbcommon' 'wayland')
+makedepends=('cargo' 'git')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/SONGOKU00mjk/foto/archive/refs/tags/v$pkgver.tar.gz")
+# replace SKIP with the release tarball's SHA256 when tagging
+sha256sums=('SKIP')
+options=(!lto)
+
+build() {
+  cd "$pkgname-$pkgver"
+  export CARGO_TARGET_DIR=target
+  cargo build --release --locked
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 target/release/foto "$pkgdir/usr/bin/foto"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/foto/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/foto/LICENSE"
+  install -Dm644 config.example.kdl "$pkgdir/usr/share/doc/foto/config.example.kdl"
+}

@@ -1,0 +1,47 @@
+// foto configuration — copy to ~/.config/foto/config.kdl
+// Run `foto --print-config` to print this anytime.
+// Every value below is the default. Delete what you don't want to change.
+
+font        "monospace"     // try "ComicShannsMono Nerd" — foto matches Nerd Font
+                            // family names even if fc-list spells them differently
+font-size   15.0
+icon-size   24              // square side in pixels, for app icons and image thumbnails
+icon-theme  "hicolor"       // icon theme name for app icons
+terminal    "foot -e"       // used to launch apps with Terminal=true (e.g. "kitty -e", "alacritty -e")
+open-with   "pkill swaybg; swaybg -m fill -i"
+                            // --files mode: command run on Enter, path appended.
+                            // swaybg replaces the wallpaper safely (the old one is
+                            // killed first). Alternatives: "awww img" (formerly
+                            // swww), "hyprpaper" via the installer's wrapper,
+                            // "xdg-open", "imv"
+files-dir   ""              // default folder for --files with no argument (~/ expands)
+                            // e.g. "~/Pictures/wallpapers" — once set, Tab inside
+                            // foto toggles between apps and images
+layout      "list"          // --files mode: "list" (rows) or "grid" (side by side)
+grid-size   96              // --files grid: thumbnail cell size in pixels
+recursive   #false          // --files: also scan subdirectories (depth-limited
+                            // to 8, dot-directories skipped); --recursive
+                            // enables it for a single run
+layer       #true           // KDL booleans take a '#'. #true = floating overlay
+                            // like fuzzel (layer-shell, niri + mango); #false =
+                            // normal tileable window
+position    "center"        // where the overlay sits: "center" (middle of the
+                            // screen — "middle" works too), "top" (dmenu style)
+                            // or "bottom". Only used when layer is #true
+margin-y    0               // gap from the top/bottom edge for position top/
+                            // bottom (e.g. 40 to sit below a waybar)
+border-radius 12           // corner rounding in pixels (anti-aliased, the
+                            // area outside is transparent); 0 = square
+match-mode  "scored"        // "scored" (fzf-like ranking) or "substring"
+history     #true           // remember what you launch most (kept in
+                            // ~/.cache/foto/history) and rank those entries
+                            // first; #false turns recording + ranking off
+width       640             // requested window size (compositors may override)
+height      440
+
+colors {
+    background  "#1d2021f2"  // "RRGGBB" or "RRGGBBAA" (last 2 digits = transparency)
+    foreground  "#ebdbb2"
+    selected    "#504945"
+    border      "#83a598"
+}
