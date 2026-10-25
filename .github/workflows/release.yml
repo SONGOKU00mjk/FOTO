@@ -1,0 +1,111 @@
+# Release builds — triggered by pushing a semver tag (v0.1.0, v1.2.3, ...).
+#
+# Targets and why:
+#   x86_64-unknown-linux-gnu   native build on the ubuntu runner
+#   aarch64-unknown-linux-gnu  cross build via `cross` (docker images carry
+#                              the arm64 toolchain + sysroot)
+#   musl: intentionally NOT built. foto dynamically links libxkbcommon and
+#   talks to libwayland-client (dlopen'd at runtime); those libraries live
+#   on the target system only, so a static musl binary could not run
+#   standalone and would still need glibc-built shared objects. A musl
+#   build adds packaging complexity for zero deployability.
+#
+# Artifacts: tar.gz per target (binary + README + LICENSE +
+# config.example.kdl) and a SHA256SUMS file covering all tarballs.
+# After the workflow uploads the release assets, install.sh finds them at
+#   https://github.com/SONGOKU00mjk/foto/releases/latest/download/...
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the GitHub release
+
+env:
+  BIN: foto
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install native dependencies (host target)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev pkg-config
+
+      - name: Install cross (aarch64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          cargo install cross --locked
+          # cross builds in a docker image with the arm64 sysroot;
+          # libxkbcommon + libwayland for arm64 are installed inside it
+          echo '[target.aarch64-unknown-linux-gnu]' >> Cross.toml
+          echo 'pre-build = ["apt-get update", "apt-get install -y libxkbcommon-dev libwayland-dev pkg-config"]' >> Cross.toml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then
+            cargo build --release
+            cp target/release/${BIN} "foto-${{ matrix.target }}"
+          else
+            cross build --release --target ${{ matrix.target }}
+            cp "target/${{ matrix.target }}/release/${BIN}" "foto-${{ matrix.target }}"
+          fi
+
+      - name: Package
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DIR="foto-${VERSION}-${{ matrix.target }}"
+          mkdir -p "$DIR"
+          cp "foto-${{ matrix.target }}" "$DIR/${BIN}"
+          cp README.md LICENSE config.example.kdl "$DIR/"
+          tar czf "$DIR.tar.gz" "$DIR"
+          # stable name for install.sh: releases/latest/download/...
+          cp "$DIR.tar.gz" "foto-${{ matrix.target }}.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            foto-*.tar.gz
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum foto-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/foto-*.tar.gz
+            dist/SHA256SUMS
+          generate_release_notes: true

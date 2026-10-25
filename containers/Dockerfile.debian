@@ -1,0 +1,10 @@
+FROM debian:trixie
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential pkg-config libxkbcommon-dev libwayland-dev \
+      git curl sudo ca-certificates rustc cargo \
+ && useradd -m -s /bin/sh builder \
+ && echo 'builder ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/builder
+USER builder
+WORKDIR /home/builder
+CMD ["sh", "-c", "sh /repo/install.sh --user --no-rustup && test -x $HOME/.local/bin/foto && $HOME/.local/bin/foto --help >/dev/null && echo 'SMOKE OK: debian'"]

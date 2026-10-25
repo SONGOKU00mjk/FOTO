@@ -1,0 +1,9 @@
+# Rust build artifacts — never commit the target directory
+/target/
+
+# Prebuilt release binary — ship this on GitHub Releases, not in git
+/foto-prebuilt-linux-x86_64
+
+# Source archives we generate for distribution
+*.tar.gz
+*.zip

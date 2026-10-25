@@ -1,0 +1,108 @@
+# CI for foto — Wayland-native launcher + image browser.
+#
+# How each job behaves on a runner WITHOUT a compositor (GitHub runners have
+# none):
+#
+#   fmt        pure text check, no compilation, no native libraries, no
+#              compositor needed. Always green unless the code is misformatted.
+#
+#   clippy     compiles the crate, so the native build-time dependencies
+#              (libxkbcommon, libwayland, pkg-config) must be installed —
+#              build scripts call pkg-config. No compositor is needed: the
+#              Wayland connection is only opened at runtime by main().
+#
+#   test       same build-time needs as clippy. All tests are pure-logic unit
+#              tests plus CLI integration tests (--list / --print-config /
+#              --dmenu); none of them open a Wayland connection, so they pass
+#              on a headless runner by design.
+#
+#   build      links the release binary. Producing the binary only needs the
+#              dev headers/libraries present; libwayland-client is a runtime
+#              dynamic dependency that is used only when a real Wayland
+#              session connects.
+#
+#   shellcheck static analysis of install.sh — no Rust involved at all.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: cargo clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: cargo test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
+
+  build:
+    name: cargo build --release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev pkg-config
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release
+
+  shellcheck:
+    name: shellcheck install.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # shellcheck is preinstalled on ubuntu-latest runners
+      - run: shellcheck -S warning install.sh
+
+  msrv:
+    name: cargo check (MSRV 1.95)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev pkg-config
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-targets

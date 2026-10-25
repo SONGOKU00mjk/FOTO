@@ -1,0 +1,33 @@
+# Maintainer: SONGOKU00mjk <SONGOKU00mjk@users.noreply.github.com>
+pkgname=foto-git
+pkgver=r1.abcdef
+pkgrel=1
+pkgdesc="Minimal Wayland-native app launcher and image browser — no GTK, no Qt (git)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/SONGOKU00mjk/foto"
+license=('GPL3')
+depends=('gcc-libs' 'libxkbcommon' 'wayland')
+makedepends=('cargo' 'git')
+provides=('foto')
+conflicts=('foto')
+source=("git+https://github.com/SONGOKU00mjk/foto.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd foto
+  printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cd foto
+  export CARGO_TARGET_DIR=target
+  cargo build --release --locked
+}
+
+package() {
+  cd foto
+  install -Dm755 target/release/foto "$pkgdir/usr/bin/foto"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/foto/README.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/foto/LICENSE"
+  install -Dm644 config.example.kdl "$pkgdir/usr/share/doc/foto/config.example.kdl"
+}

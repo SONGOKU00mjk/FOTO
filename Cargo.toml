@@ -1,0 +1,82 @@
+[package]
+name = "foto"
+version = "1.0.2"
+edition = "2021"
+description = "A minimal Wayland-native app launcher with image preview — no GTK, no Qt"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/SONGOKU00mjk/foto"
+homepage = "https://github.com/SONGOKU00mjk/foto"
+readme = "README.md"
+# Verified floor: the current Cargo.lock pulls kdl 6.7.1, which requires
+# rustc 1.95; the workspace itself compiles cleanly on 1.95.0 (CI checks it).
+rust-version = "1.95"
+keywords = ["wayland", "launcher", "dmenu", "layer-shell", "wallpaper"]
+categories = ["command-line-utilities", "gui"]
+
+[dependencies]
+# core (frontend-independent): error handling + CLI + config + state
+anyhow = "1"
+kdl = "6"
+dirs = "5"
+# thumbnail-engine ping channel: tiny, pure Rust, no system libraries —
+# required even in tui-only builds so the shared state compiles
+calloop = "0.13"
+
+# TUI frontend (feature "tui")
+ratatui = { version = "0.29", optional = true }
+crossterm = { version = "0.28", optional = true }
+
+# Wayland GUI frontend (feature "gui"; toolkit-free, exactly like fuzzel:
+# protocol + pixels + fonts)
+wayland-client = { version = "0.31", optional = true }
+smithay-client-toolkit = { version = "0.19", optional = true }
+# zwlr_layer_shell_v1 — makes foto open as a floating overlay, like fuzzel
+wayland-protocols-wlr = { version = "0.3", features = ["client"], optional = true }
+# wp_viewporter + wp_fractional_scale_v1 — HiDPI: crisp rendering on
+# fractional-scale outputs (staging gates fractional-scale)
+wayland-protocols = { version = "0.32", features = ["client", "staging"], optional = true }
+tiny-skia = { version = "0.11", optional = true }
+cosmic-text = { version = "0.12", optional = true }
+
+# image decoding: app icons (PNG/SVG) and --files thumbnails
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp"], optional = true }
+resvg = { version = "0.44", optional = true }
+# NOTE: usvg is NOT a direct dependency — it is resvg's own `resvg::usvg`
+# re-export (same crate, same version, one source of truth for SVG).
+
+[features]
+default = ["gui", "tui"]
+# both frontends; --no-default-features is a compile error by design
+# (a core-only build has no interactive frontend)
+gui = [
+    "dep:wayland-client",
+    "dep:smithay-client-toolkit",
+    "dep:wayland-protocols-wlr",
+    "dep:wayland-protocols",
+    "dep:tiny-skia",
+    "dep:cosmic-text",
+    "dep:image",
+    "dep:resvg",
+]
+tui = ["dep:ratatui", "dep:crossterm"]
+
+# tests/cli.rs parses `--print-config` output to prove it is valid KDL.
+# kdl is already a main dependency — this only exposes it to the tests.
+[dev-dependencies]
+kdl = "6"
+
+# Minimalism targets: foto's identity is a small, fast, toolkit-free binary.
+# * lto = "fat"        — whole-program optimization across all crates
+# * codegen-units = 1  — one codegen pass, best cross-crate elimination
+# * opt-level = "s"    — optimize for size; foto draws rows + thumbnails,
+#                        nothing here needs the speed of opt-level 3
+# * panic = "abort"    — no unwinding tables/landing pads; the TUI already
+#                        treats any exit path the same (explicit restore),
+#                        and a panic hook restores the terminal first
+# * strip = true       — no symbols in the shipped binary
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = "s"
+panic = "abort"
+strip = true
